@@ -25,7 +25,25 @@ This plugin pairs panes 1:1 so opening a file in one automatically opens it in i
 - Pair A-B: link Pane A with Pane B → they sync with each other
 - Pair C-D: link Pane C with Pane D → they sync with each other, independent of A-B
 - If only Pane A exists: running “Link this pane for file sync” auto-creates a partner split, opens the same file, and pairs A with the new pane
+## What this plugin does NOT sync
 
+- **Cursor position**: Each pane maintains its own cursor, scroll, and edit state independently
+- **Selections**: Highlighting and selections are not shared
+- **Edits**: Changes in one pane do NOT sync to the paired pane in real-time
+
+This is intentional—it lets you reference and edit the same file side-by-side without cursor chaos or conflicting edits. You keep full control over each pane's view.
+
+## Comparison with other sync plugins
+
+Many pane-sync plugins sync cursor position, selections, and scroll state. This can cause:
+- Unexpected cursor jumps when editing
+- Confusion about which pane you're actively typing in
+- Scroll position conflicts
+
+This plugin takes a simpler approach: **file opens only**. You see the same file in both panes and can edit independently. This is especially useful for:
+- Side-by-side reference viewing
+- Comparing different sections of the same file
+- Editing different parts without cursor interference
 ## First time developing plugins?
 
 Quick starting guide for new plugin devs:
