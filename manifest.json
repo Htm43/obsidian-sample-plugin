@@ -4,7 +4,7 @@
 	"version": "1.0.0",
 	"minAppVersion": "0.15.0",
 	"description": "Syncs open files across tabs without affecting scroll or cursor position. Avoids the scroll jump issue with standard 'Link with tab'.",
-	"author": "Your Name",
+	"author": "htm43",
 	"authorUrl": "",
 	"fundingUrl": "",
 	"isDesktopOnly": false

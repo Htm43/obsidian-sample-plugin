@@ -87,44 +87,69 @@ export default class SyncFileOnlyPlugin extends Plugin {
 	}
 
 	private linkLeafWithPartner(activeLeaf: WorkspaceLeaf, options: { createIfNone?: boolean } = {}): WorkspaceLeaf | null {
-		const container = activeLeaf.parent;
-		if (!container) return null;
-
-		const siblings: WorkspaceLeaf[] = [];
-		
-		// First: find all leaves with file views (not special views like calendar)
-		const fileLeaves: WorkspaceLeaf[] = [];
-		this.app.workspace.iterateAllLeaves((leaf) => {
-			if (leaf !== activeLeaf && leaf.view?.getViewType() === 'markdown') {
-				fileLeaves.push(leaf);
-			}
-		});
-
-		// Prefer leaves in same parent
-		for (const leaf of fileLeaves) {
-			if (leaf.parent === container) {
-				siblings.push(leaf);
-			}
+		const activeFile = (activeLeaf.view as any)?.file as TFile | null;
+		if (!activeFile) {
+			console.log('No active file found');
+			return null;
 		}
 
-		// If no siblings in same container, use any file leaf
-		if (siblings.length === 0 && fileLeaves.length > 0) {
-			const firstFileLeaf = fileLeaves[0];
-			if (firstFileLeaf) {
-				siblings.push(firstFileLeaf);
-			}
+		const activeFilePath = activeFile.path;
+		let partner: WorkspaceLeaf | null = null;
+
+		console.log('Active leaf:', activeLeaf, 'File:', activeFilePath);
+
+		// Only search in main workspace area (rootSplit), not sidebars
+		const rootSplit = this.app.workspace.rootSplit;
+		if (rootSplit) {
+			let leafCount = 0;
+			this.app.workspace.iterateAllLeaves((leaf) => {
+				// Skip if leaf is not in main area (check if it's descendant of rootSplit)
+				let parent = leaf.parent;
+				let isInRootSplit = false;
+				while (parent) {
+					if (parent === rootSplit) {
+						isInRootSplit = true;
+						break;
+					}
+					parent = (parent as any).parent;
+				}
+
+				if (!isInRootSplit) {
+					return; // Skip sidebar leaves
+				}
+
+				leafCount++;
+				const isSameLeaf = leaf === activeLeaf;
+				const leafFile = (leaf.view as any)?.file as TFile | null;
+				console.log(`Leaf ${leafCount} (main area): isSame=${isSameLeaf}, file=${leafFile?.path}, alreadyFoundPartner=${!!partner}`);
+				
+				if (leaf !== activeLeaf && !partner) {
+					if (leafFile && leafFile.path === activeFilePath) {
+						console.log('Found partner with same file:', leafFile.path);
+						partner = leaf;
+					}
+				}
+			});
+			console.log(`Total leaves in main area: ${leafCount}, Partner found: ${!!partner}`);
 		}
 
-		let partner: WorkspaceLeaf | null = siblings[0] ?? null;
-
-		// If still none and allowed, create a split with same file and link it
+		// If no leaf has this file open and allowed, create a new split with the same file
 		if (!partner && options.createIfNone) {
-			const newLeaf = this.app.workspace.createLeafBySplit(activeLeaf, 'vertical');
-			const file = (activeLeaf.view as any)?.file as TFile | null;
-			if (file) {
-				newLeaf.openFile(file);
+			console.log('Creating new split for file:', activeFilePath);
+			try {
+				const newLeaf = this.app.workspace.createLeafBySplit(activeLeaf, 'vertical', false);
+				console.log('New leaf created:', newLeaf);
+				if (newLeaf) {
+					// Open file immediately (returns promise but don't need to await for pairing)
+					newLeaf.openFile(activeFile);
+					partner = newLeaf;
+					console.log('Partner set to new leaf');
+				}
+			} catch (e) {
+				console.error('Failed to create split:', e);
 			}
-			partner = newLeaf;
+		} else if (!partner) {
+			console.log('No partner found and createIfNone is false');
 		}
 
 		if (partner) {
@@ -138,6 +163,7 @@ export default class SyncFileOnlyPlugin extends Plugin {
 			this.linkedLeaves.get(partner)!.clear();
 			this.linkedLeaves.get(activeLeaf)!.add(partner);
 			this.linkedLeaves.get(partner)!.add(activeLeaf);
+			console.log('Linked activeLeaf === partner?', activeLeaf === partner);
 		}
 
 		return partner;
