@@ -16,8 +16,11 @@ This plugin pairs panes 1:1 so opening a file in one automatically opens it in i
     - Command palette: Ctrl/Cmd+P → “Link this pane for file sync”
     - Tab right-click: Right-click a file tab → “Link this pane for file sync”
 3. **What happens**:
-    - Prefers a sibling tab in the same split; otherwise a tab with the same group; if none, auto-creates a vertical split with the same file and pairs it
+    - Searches the main editor area for another tab with the same file open
+    - If found, pairs with that tab
+    - If not found, auto-creates a vertical split with the same file and pairs with it
     - Only that paired pane will sync with this one; other pairs stay independent
+    - Sidebar panes (Calendar, File Explorer) are ignored
 4. **Unlinked panes**: Calendar/File Explorer etc. remain unchanged
 
 ## Example
