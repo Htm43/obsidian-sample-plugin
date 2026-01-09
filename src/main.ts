@@ -34,15 +34,16 @@ export default class SyncFileOnlyPlugin extends Plugin {
 		// Add right-click menu entry on file tabs (typed API: file-menu with source "tab-header")
 		this.registerFileTabMenu();
 
-		// Listen for file opens in workspace
+		// Listen for active leaf changes to sync linked panes
 		this.registerEvent(
-			this.app.workspace.on('file-open', (file: TFile | null) => {
-				if (!this.settings.enabled || this.isSyncing || !file) {
+			this.app.workspace.on('active-leaf-change', (leaf: WorkspaceLeaf | null) => {
+				if (!this.settings.enabled || this.isSyncing || !leaf) {
 					return;
 				}
 
-				const leaf = this.app.workspace.getLeaf();
-				if (leaf && leaf.view) {
+				const view = leaf.view;
+				const file = view && 'file' in view ? (view as { file: TFile }).file : null;
+				if (file) {
 					this.syncFileToLinkedLeaves(leaf, file);
 				}
 			})
@@ -52,8 +53,12 @@ export default class SyncFileOnlyPlugin extends Plugin {
 		this.registerEvent(
 			this.app.workspace.on('layout-change', () => {
 				this.cleanupClosedLeaves();
+				this.updateLeafVisualIndicators();
 			})
 		);
+
+		// Initialize visual indicators
+		this.updateLeafVisualIndicators();
 	}
 
 	onunload() {
@@ -145,6 +150,7 @@ export default class SyncFileOnlyPlugin extends Plugin {
 			this.linkedLeaves.get(partner)!.clear();
 			this.linkedLeaves.get(activeLeaf)!.add(partner);
 			this.linkedLeaves.get(partner)!.add(activeLeaf);
+			this.updateLeafVisualIndicators();
 		}
 
 		return partner;
@@ -168,6 +174,31 @@ export default class SyncFileOnlyPlugin extends Plugin {
 		}
 	}
 
+	private updateLeafVisualIndicators() {
+		// Remove all existing indicators
+		this.app.workspace.iterateAllLeaves((leaf) => {
+			const tabHeaderEl = (leaf as { tabHeaderEl?: HTMLElement }).tabHeaderEl;
+			if (tabHeaderEl) {
+				const existingIcon = tabHeaderEl.querySelector('.sync-indicator');
+				if (existingIcon) {
+					existingIcon.remove();
+				}
+			}
+		});
+
+		// Add indicators to linked leaves
+		this.linkedLeaves.forEach((linkedSet, leaf) => {
+			if (linkedSet.size > 0) {
+				const tabHeaderEl = (leaf as { tabHeaderEl?: HTMLElement }).tabHeaderEl;
+				if (tabHeaderEl) {
+					const indicator = tabHeaderEl.createDiv('sync-indicator');
+					indicator.setAttribute('aria-label', 'This pane is linked for file sync');
+					indicator.textContent = '🔗';
+				}
+			}
+		});
+	}
+
 	private cleanupClosedLeaves() {
 		// Remove entries for leaves that no longer exist
 		const activeLeaves = new Set<WorkspaceLeaf>();
@@ -185,6 +216,8 @@ export default class SyncFileOnlyPlugin extends Plugin {
 		keysToDelete.forEach((leaf) => {
 			this.linkedLeaves.delete(leaf);
 		});
+
+		this.updateLeafVisualIndicators();
 	}
 
 	async loadSettings(): Promise<void> {
