@@ -390,7 +390,7 @@ export default class SyncFileOnlyPlugin extends Plugin {
 		});
 
 		if (restoredCount > 0) {
-			console.log(`[SyncFile] Restored ${restoredCount} link pair(s)`);
+			console.debug(`[SyncFile] Restored ${restoredCount} link pair(s)`);
 		}
 
 		this.updateLeafVisualIndicators();
